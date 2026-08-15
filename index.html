@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f5f1" />
+    <meta name="description" content="멈춘 작업에 다시 진입하도록 돕는 5분 가이드" />
+    <link rel="icon" href="data:," />
+    <title>5분 Task Re-entry</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="config.js?v=3"></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell" id="app">
+      <header class="app-header" aria-label="서비스 정보">
+        <a class="brand" href="/" data-action="home" aria-label="5분 Task Re-entry 처음으로">Task Re-entry</a>
+        <span class="version-badge" data-version-badge>V2</span>
+      </header>
+
+      <section class="screen screen--home" data-screen="home" aria-labelledby="home-title" hidden>
+        <div class="content-block">
+          <p class="eyebrow">다시 흐름에 들어가는 가장 작은 시간</p>
+          <h1 id="home-title" tabindex="-1">해야 할 일이 있는데<br />시작하기 싫은가요?</h1>
+          <p class="description">끝내려고 하지 말고, 딱 5분만 해보세요.</p>
+        </div>
+        <button class="button button--primary" type="button" data-action="v1-start">딱 5분만 시작하기</button>
+      </section>
+
+      <section class="screen" data-screen="state" aria-labelledby="state-title" hidden>
+        <div class="content-block content-block--left">
+          <p class="eyebrow">먼저 한 가지만 고르세요</p>
+          <h1 id="state-title" tabindex="-1">지금 어떤 상태인가요?</h1>
+          <p class="description">무슨 일인지 입력하지 않아도 됩니다.</p>
+        </div>
+        <div class="state-list" role="group" aria-label="현재 작업 상태">
+          <button class="state-option" type="button" data-state="not_started"><span>아직 시작도 못했어요</span><span aria-hidden="true">01</span></button>
+          <button class="state-option" type="button" data-state="interrupted"><span>하다가 멈췄어요</span><span aria-hidden="true">02</span></button>
+          <button class="state-option" type="button" data-state="distracted"><span>하고 있는데 집중이 깨졌어요</span><span aria-hidden="true">03</span></button>
+          <button class="state-option" type="button" data-state="finishing"><span>거의 끝났는데 마무리가 안 돼요</span><span aria-hidden="true">04</span></button>
+        </div>
+      </section>
+
+      <section class="screen screen--guide" data-screen="guide" aria-labelledby="guide-title" hidden>
+        <div class="guide-copy">
+          <p class="eyebrow" data-guide-eyebrow>재진입 가이드</p>
+          <h1 id="guide-title" data-guide-title tabindex="-1"></h1>
+          <ol class="guide-steps" data-guide-steps></ol>
+        </div>
+        <button class="button button--primary" type="button" data-action="guide-start" data-guide-cta>5분 시작</button>
+      </section>
+
+      <section class="screen screen--timer" data-screen="timer" aria-labelledby="timer-title" hidden>
+        <div class="timer-content">
+          <p class="eyebrow" data-timer-label>첫 번째 5분</p>
+          <h1 class="timer" id="timer-title" aria-label="남은 시간" tabindex="-1"><span data-timer>05:00</span></h1>
+          <p class="timer-guidance" data-timer-guidance>지금 해야 할 일 하나만 해보세요.</p>
+        </div>
+        <button class="text-button" type="button" data-action="ask-exit">그만하기</button>
+      </section>
+
+      <section class="screen screen--complete" data-screen="complete" aria-labelledby="complete-title" hidden>
+        <div class="content-block">
+          <p class="eyebrow" data-complete-eyebrow>첫 번째 5분을 채웠어요</p>
+          <h1 id="complete-title" tabindex="-1">5분 완료<br />지금 흐름이 조금 붙었나요?</h1>
+        </div>
+        <div class="completion-actions">
+          <fieldset class="task-category" data-task-category-block>
+            <legend>방금 어떤 종류의 일을 하고 있었나요? <span>선택 사항</span></legend>
+            <div class="category-options" role="group" aria-label="작업 종류 선택">
+              <button type="button" data-task-category="study">공부 / 시험공부</button>
+              <button type="button" data-task-category="reading">독서</button>
+              <button type="button" data-task-category="assignment">과제 / 보고서</button>
+              <button type="button" data-task-category="work">업무</button>
+              <button type="button" data-task-category="coding">코딩 / 개발</button>
+              <button type="button" data-task-category="research">연구 / 논문</button>
+              <button type="button" data-task-category="writing">글쓰기</button>
+              <button type="button" data-task-category="presentation">발표 / PPT 준비</button>
+              <button type="button" data-task-category="exercise">운동</button>
+              <button type="button" data-task-category="cleaning">청소 / 정리</button>
+              <button type="button" data-task-category="housework">집안일</button>
+              <button type="button" data-task-category="administrative">행정 / 서류 처리</button>
+              <button type="button" data-task-category="communication">이메일 / 연락</button>
+              <button type="button" data-task-category="personal_project">개인 프로젝트</button>
+              <button type="button" data-task-category="hobby_creative">취미 / 창작</button>
+              <button type="button" data-task-category="other">기타</button>
+              <button type="button" data-task-category="prefer_not_to_say">답하지 않기</button>
+            </div>
+          </fieldset>
+          <div class="actions">
+            <button class="button button--primary" type="button" data-action="continue">5분 더 할래</button>
+            <button class="button button--secondary" type="button" data-action="stop">오늘은 여기까지</button>
+          </div>
+          <fieldset class="feedback" data-feedback-block>
+            <legend>시작하기 전보다 지금이 조금 더 하기 쉬워졌나요? <span>선택 사항</span></legend>
+            <div class="feedback-options">
+              <button type="button" data-feedback="worse">아니다</button>
+              <button type="button" data-feedback="same">비슷하다</button>
+              <button type="button" data-feedback="better">그렇다</button>
+            </div>
+          </fieldset>
+        </div>
+      </section>
+
+      <section class="screen screen--done" data-screen="done" aria-labelledby="done-title" hidden>
+        <div class="content-block">
+          <p class="eyebrow">작업 재진입을 마쳤어요</p>
+          <h1 id="done-title" tabindex="-1">오늘은 여기까지</h1>
+          <p class="description">5분이라도 다시 시작했다는 것으로 충분합니다.<br />다시 흐름이 끊기면 언제든 돌아오세요.</p>
+        </div>
+        <dl class="session-summary">
+          <div><dt>오늘 진행한 시간</dt><dd data-total-minutes>5분</dd></div>
+          <div><dt>총 5분 세션</dt><dd data-total-cycles>1회</dd></div>
+        </dl>
+        <button class="button button--primary" type="button" data-action="restart">처음으로 돌아가기</button>
+      </section>
+    </main>
+
+    <dialog class="exit-dialog" data-exit-dialog aria-labelledby="exit-title">
+      <form method="dialog">
+        <h2 id="exit-title">지금 종료할까요?</h2>
+        <p>진행한 시간은 익명 실험 데이터에 기록됩니다.</p>
+        <div class="dialog-actions">
+          <button class="button button--secondary" value="cancel" data-action="cancel-exit">계속하기</button>
+          <button class="button button--danger" value="confirm" data-action="confirm-exit">종료하기</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="sr-only" aria-live="polite" data-announcer></div>
+  </body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "task-reentry-v1-v2-experiment",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "check": "node --check app.js && node --test tests/*.test.mjs",
+    "serve": "npx serve ."
+  }
+}
