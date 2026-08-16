@@ -42,6 +42,27 @@ test("기본 버전과 실험 모드를 설정에서 분리한다", () => {
   assert.match(config, /EXPERIMENT_MODE:\s*"manual"/);
 });
 
+test("재방문(누적 세션·연속일) 기록 계약을 포함한다", () => {
+  assert.match(html, /data-total-sessions/);
+  assert.match(html, /data-current-streak/);
+  assert.match(html, /data-streak-banner/);
+  assert.match(app, /function recordHistory/);
+  assert.match(app, /function renderStreakBanner/);
+  assert.match(app, /"lifetime_session_count"|lifetime_session_count:/);
+  assert.match(app, /"current_streak_days"|current_streak_days:/);
+  assert.match(sql, /lifetime_session_count/);
+  assert.match(sql, /current_streak_days/);
+});
+
+test("중단 이유 선택 계약을 포함한다", () => {
+  for (const reason of ["task_done", "tired", "interrupted_external", "cant_focus", "no_specific_reason", "prefer_not_to_say"]) {
+    assert.match(html, new RegExp(`data-stop-reason="${reason}"`));
+  }
+  assert.match(app, /"stop_reason_selected"/);
+  assert.match(app, /function selectStopReason/);
+  assert.match(sql, /stop_reason text/);
+});
+
 test("Supabase RLS와 SELECT 차단 계약을 포함한다", () => {
   assert.match(sql, /enable row level security/i);
   assert.doesNotMatch(sql, /grant\s+select\s+on\s+public\.(sessions|events)\s+to\s+anon/i);

@@ -15,6 +15,9 @@ create table if not exists public.sessions (
   first_continue boolean,
   total_cycles integer not null default 0 check (total_cycles >= 0),
   feedback text check (feedback is null or feedback in ('worse', 'same', 'better')),
+  stop_reason text check (stop_reason is null or stop_reason in ('task_done', 'tired', 'interrupted_external', 'cant_focus', 'no_specific_reason', 'prefer_not_to_say')),
+  lifetime_session_count integer check (lifetime_session_count is null or lifetime_session_count >= 1),
+  current_streak_days integer check (current_streak_days is null or current_streak_days >= 1),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -38,6 +41,9 @@ create table if not exists public.events (
 -- 기존 설치에도 안전하게 적용되는 migration.
 alter table public.sessions add column if not exists task_category text;
 alter table public.events add column if not exists task_category text;
+alter table public.sessions add column if not exists lifetime_session_count integer;
+alter table public.sessions add column if not exists current_streak_days integer;
+alter table public.sessions add column if not exists stop_reason text;
 
 do $$
 begin
@@ -48,6 +54,18 @@ begin
   if not exists (select 1 from pg_constraint where conname = 'events_task_category_check') then
     alter table public.events add constraint events_task_category_check
       check (task_category is null or task_category in ('study', 'reading', 'assignment', 'work', 'coding', 'research', 'writing', 'presentation', 'exercise', 'cleaning', 'housework', 'administrative', 'communication', 'personal_project', 'hobby_creative', 'other', 'prefer_not_to_say'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'sessions_lifetime_session_count_check') then
+    alter table public.sessions add constraint sessions_lifetime_session_count_check
+      check (lifetime_session_count is null or lifetime_session_count >= 1);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'sessions_current_streak_days_check') then
+    alter table public.sessions add constraint sessions_current_streak_days_check
+      check (current_streak_days is null or current_streak_days >= 1);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'sessions_stop_reason_check') then
+    alter table public.sessions add constraint sessions_stop_reason_check
+      check (stop_reason is null or stop_reason in ('task_done', 'tired', 'interrupted_external', 'cant_focus', 'no_specific_reason', 'prefer_not_to_say'));
   end if;
 end $$;
 

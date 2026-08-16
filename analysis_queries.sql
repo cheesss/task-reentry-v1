@@ -151,3 +151,51 @@ from public.sessions
 where task_state is not null and task_category is not null
 group by task_state, task_category
 order by n desc, task_state, task_category;
+
+-- 14) 재방문(리텐션) 버킷별 Continuation Rate
+-- 세션 완료 시점의 누적 재진입 횟수(lifetime_session_count)가 높을수록 지속률이 오르는지 확인
+select
+  case
+    when lifetime_session_count is null then 'unknown (구버전 데이터)'
+    when lifetime_session_count = 1 then '1 (첫 재진입)'
+    when lifetime_session_count between 2 and 3 then '2-3'
+    else '4+'
+  end as lifetime_session_bucket,
+  count(*) as n,
+  round(avg(current_streak_days)::numeric, 2) as avg_streak_days,
+  round(
+    100.0 * count(*) filter (where first_continue is true)
+    / nullif(count(*) filter (where first_completed_at is not null), 0),
+    2
+  ) as continuation_rate_pct
+from public.sessions
+group by lifetime_session_bucket
+order by lifetime_session_bucket;
+
+-- 15) 연속 사용일수(streak) 분포
+select
+  current_streak_days,
+  count(*) as n
+from public.sessions
+where current_streak_days is not null
+group by current_streak_days
+order by current_streak_days;
+
+-- 16) 중단 이유별 분포
+select
+  stop_reason,
+  count(*) as n
+from public.sessions
+where stop_reason is not null
+group by stop_reason
+order by n desc, stop_reason;
+
+-- 17) 중단 이유별 평균 진행 cycle 수 (어떤 이유일 때 더 일찍 그만두는지)
+select
+  stop_reason,
+  count(*) as n,
+  round(avg(total_cycles)::numeric, 2) as average_cycle
+from public.sessions
+where stop_reason is not null
+group by stop_reason
+order by average_cycle asc;

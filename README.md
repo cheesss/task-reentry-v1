@@ -22,7 +22,7 @@ URL 파라미터는 수동 설정과 A/B 배정을 우선하여 테스트 버전
 
 - `index.html`: V1/V2 화면, 타이머, 종료 확인 대화상자
 - `style.css`: 모바일 우선 레이아웃과 접근성 스타일
-- `app.js`: 상태 머신, timestamp 타이머, 복구, 이벤트 및 원격 저장
+- `app.js`: 상태 머신, timestamp 타이머, 복구, 재방문(누적 세션·연속일) 기록, 이벤트 및 원격 저장
 - `config.js`: 버전·GA4·Supabase 설정
 - `supabase_setup.sql`: 테이블, 인덱스, RLS 정책
 - `analysis_queries.sql`: V1/V2 및 Task State KPI 분석
@@ -81,9 +81,20 @@ ID가 비어 있으면 GA 스크립트를 불러오지 않으며 모든 이벤�
 - `stop_after_5min`, `early_exit`, `session_finished`
 - `feedback_selected`
 - `task_category_selected` (첫 5분 완료 후 카테고리를 선택할 때 기록)
+- `stop_reason_selected` (종료 화면에서 중단 이유를 선택할 때 기록)
 - `tab_hidden`, `tab_visible`
 
 모든 이벤트에 버전, 상태, 선택된 작업 종류, cycle, 시간, page/session 경과시간을 포함합니다. V1의 `task_state`는 `null`입니다. `task_category`는 첫 5분 완료 뒤 선택적으로 수집되며 가이드나 Task State 판정에는 사용하지 않습니다.
+
+## 재방문 기록 (누적 세션·연속 사용일)
+
+브라우저 `localStorage`(`task_reentry_history_v1`)에 기기 단위로 누적 재진입 세션 수(`totalSessions`)와 연속 사용일(`currentStreak`)을 기록합니다. 세션이 `done` 화면에 도달할 때마다 갱신되며, 홈/상태선택 화면에는 "연속 N일째" 또는 "벌써 N번째 재진입" 배너로 보여주고, 종료 화면에는 누적 세션 수와 연속일을 함께 표시합니다.
+
+세션이 끝날 때 그 시점의 누적값을 `sessions.lifetime_session_count`, `sessions.current_streak_days` 컬럼과 `session_finished` 이벤트 metadata에 스냅샷으로 함께 저장하므로, "재방문 횟수가 많을수록 Continuation Rate가 높아지는가"를 SQL로 검증할 수 있습니다. 로그인이 없으므로 기기를 바꾸면 기록도 초기화됩니다.
+
+## 중단 이유
+
+완료(`done`) 화면에서 "오늘은 어떤 이유로 마무리했나요?"를 선택 사항으로 물어 `sessions.stop_reason`에 저장합니다(`task_done`/`tired`/`interrupted_external`/`cant_focus`/`no_specific_reason`/`prefer_not_to_say`). 5분을 다 채우고 멈춘 경우와 타이머 중간에 종료한 경우 모두 이 화면으로 오므로 두 상황을 모두 포괄합니다. `analysis_queries.sql`의 16, 17번 쿼리로 이유별 분포와 평균 진행 cycle을 확인해 V1/V2의 부족한 지점을 데이터로 파악할 수 있습니다.
 
 ## KPI 확인
 
@@ -99,7 +110,7 @@ Task Category 분석 쿼리는 카테고리별 및 `Task State × Task Category`
 
 카테고리를 첫 5분 완료 후에만 묻기 때문에, 카테고리가 기록된 표본의 Completion Rate는 구조적으로 100%입니다. 카테고리별 완료율을 비편향적으로 비교하려면 시작 전에 카테고리를 수집해야 하며, 현재 UX 요구사항에서는 Continuation Rate가 유효한 카테고리 비교 지표입니다.
 
-Main KPI는 V1과 V2의 **Continuation Rate** 차이입니다. V2는 `task_state`별 사용자 수, 시작률, 완료율, 지속률과 평균 cycle도 비교합니다.
+Main KPI는 V1과 V2의 **Continuation Rate** 차이입니다. V2는 `task_state`별 사용자 수, 시작률, 완료율, 지속률과 평균 cycle도 비교합니다. 보조 KPI로 재방문(누적 세션 수·연속 사용일) 버킷별 Continuation Rate를 비교해 반복 재진입이 실제로 지속률을 높이는지도 확인합니다(14, 15번 쿼리).
 
 공개 관리자 페이지는 만들지 않았습니다. anon key로 전체 분석 데이터를 읽게 하면 RLS와 개인정보 최소화 원칙을 깨기 때문입니다. 분석은 인증된 Supabase Dashboard의 SQL Editor 또는 CSV export에서 수행합니다.
 
