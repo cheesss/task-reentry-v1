@@ -21,6 +21,7 @@
       <section class="screen screen--home" data-screen="home" aria-labelledby="home-title" hidden>
         <div class="content-block">
           <p class="eyebrow">다시 흐름에 들어가는 가장 작은 시간</p>
+          <p class="streak-banner" data-streak-banner hidden></p>
           <h1 id="home-title" tabindex="-1">해야 할 일이 있는데<br />시작하기 싫은가요?</h1>
           <p class="description">끝내려고 하지 말고, 딱 5분만 해보세요.</p>
         </div>
@@ -30,6 +31,7 @@
       <section class="screen" data-screen="state" aria-labelledby="state-title" hidden>
         <div class="content-block content-block--left">
           <p class="eyebrow">먼저 한 가지만 고르세요</p>
+          <p class="streak-banner" data-streak-banner hidden></p>
           <h1 id="state-title" tabindex="-1">지금 어떤 상태인가요?</h1>
           <p class="description">무슨 일인지 입력하지 않아도 됩니다.</p>
         </div>
@@ -111,7 +113,20 @@
         <dl class="session-summary">
           <div><dt>오늘 진행한 시간</dt><dd data-total-minutes>5분</dd></div>
           <div><dt>총 5분 세션</dt><dd data-total-cycles>1회</dd></div>
+          <div><dt>누적 재진입 세션</dt><dd data-total-sessions>1회</dd></div>
+          <div><dt>연속 사용</dt><dd data-current-streak>1일째</dd></div>
         </dl>
+        <fieldset class="task-category" data-stop-reason-block>
+          <legend>오늘은 어떤 이유로 마무리했나요? <span>선택 사항</span></legend>
+          <div class="category-options" role="group" aria-label="중단 이유 선택">
+            <button type="button" data-stop-reason="task_done">오늘 할 일을 다 했어요</button>
+            <button type="button" data-stop-reason="tired">피곤하거나 지쳤어요</button>
+            <button type="button" data-stop-reason="interrupted_external">다른 일이 생겼어요</button>
+            <button type="button" data-stop-reason="cant_focus">집중이 잘 안 됐어요</button>
+            <button type="button" data-stop-reason="no_specific_reason">그냥 그만하고 싶었어요</button>
+            <button type="button" data-stop-reason="prefer_not_to_say">답하지 않기</button>
+          </div>
+        </fieldset>
         <button class="button button--primary" type="button" data-action="restart">처음으로 돌아가기</button>
       </section>
     </main>

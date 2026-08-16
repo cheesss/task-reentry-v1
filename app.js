@@ -8,11 +8,15 @@
     "presentation", "exercise", "cleaning", "housework", "administrative",
     "communication", "personal_project", "hobby_creative", "other", "prefer_not_to_say",
   ]);
+  const STOP_REASONS = new Set([
+    "task_done", "tired", "interrupted_external", "cant_focus", "no_specific_reason", "prefer_not_to_say",
+  ]);
   const STORAGE = {
     userId: "task_reentry_user_id",
     assignedVersion: "task_reentry_assigned_version",
     appState: "task_reentry_app_state_v2",
     eventQueue: "task_reentry_event_queue_v2",
+    history: "task_reentry_history_v1",
   };
 
   const GUIDES = {
@@ -56,6 +60,9 @@
     feedbackBlock: document.querySelector("[data-feedback-block]"),
     totalMinutes: document.querySelector("[data-total-minutes]"),
     totalCycles: document.querySelector("[data-total-cycles]"),
+    totalSessions: document.querySelector("[data-total-sessions]"),
+    currentStreak: document.querySelector("[data-current-streak]"),
+    streakBanners: Array.from(document.querySelectorAll("[data-streak-banner]")),
     exitDialog: document.querySelector("[data-exit-dialog]"),
     announcer: document.querySelector("[data-announcer]"),
   };
@@ -114,8 +121,11 @@
       firstCompletedAt: null,
       firstContinue: null,
       feedback: null,
+      stopReason: null,
       finishedAt: null,
       pageViewTracked: false,
+      lifetimeSessionCount: null,
+      currentStreakDays: null,
     };
   }
 
@@ -133,6 +143,55 @@
       console.warn("저장된 진행 상태를 복구하지 못했습니다.", error);
       return freshSession();
     }
+  }
+
+  function todayLocalDateString(date = new Date()) {
+    const offsetMs = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - offsetMs).toISOString().slice(0, 10);
+  }
+
+  function loadHistory() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(STORAGE.history));
+      if (parsed && typeof parsed.totalSessions === "number") return parsed;
+    } catch (error) {
+      console.warn("사용 기록을 불러오지 못했습니다.", error);
+    }
+    return { totalSessions: 0, currentStreak: 0, longestStreak: 0, lastActiveDate: null, totalActiveMs: 0 };
+  }
+
+  function saveHistory(history) {
+    localStorage.setItem(STORAGE.history, JSON.stringify(history));
+  }
+
+  function recordHistory() {
+    const history = loadHistory();
+    const todayStr = todayLocalDateString();
+    if (history.lastActiveDate === todayStr) {
+      // 같은 날 재진입은 streak을 유지합니다.
+    } else if (history.lastActiveDate) {
+      const diffDays = Math.round((new Date(todayStr) - new Date(history.lastActiveDate)) / 86400000);
+      history.currentStreak = diffDays === 1 ? history.currentStreak + 1 : 1;
+    } else {
+      history.currentStreak = 1;
+    }
+    history.longestStreak = Math.max(history.longestStreak, history.currentStreak);
+    history.totalSessions += 1;
+    history.totalActiveMs += state.accumulatedMs;
+    history.lastActiveDate = todayStr;
+    saveHistory(history);
+    return history;
+  }
+
+  function renderStreakBanner() {
+    const history = loadHistory();
+    let text = "";
+    if (history.currentStreak >= 2) text = `연속 ${history.currentStreak}일째 다시 시작하고 있어요.`;
+    else if (history.totalSessions >= 1) text = `벌써 ${history.totalSessions}번째 재진입이에요.`;
+    elements.streakBanners.forEach((banner) => {
+      banner.hidden = !text;
+      banner.textContent = text;
+    });
   }
 
   function isRemoteConfigured() {
@@ -223,6 +282,9 @@
       first_continue: state.firstContinue,
       total_cycles: state.completedCycles,
       feedback: state.feedback,
+      stop_reason: state.stopReason,
+      lifetime_session_count: state.lifetimeSessionCount,
+      current_streak_days: state.currentStreakDays,
     };
   }
 
@@ -365,15 +427,28 @@
       trackEvent("stop_after_5min");
     }
     state.finishedAt = Date.now();
-    trackEvent("session_finished", { reason, total_cycles: state.completedCycles, total_active_ms: state.accumulatedMs });
+    const history = recordHistory();
+    state.lifetimeSessionCount = history.totalSessions;
+    state.currentStreakDays = history.currentStreak;
+    trackEvent("session_finished", {
+      reason,
+      total_cycles: state.completedCycles,
+      total_active_ms: state.accumulatedMs,
+      lifetime_session_count: history.totalSessions,
+      current_streak_days: history.currentStreak,
+    });
     elements.totalMinutes.textContent = `${Math.max(1, Math.round(state.accumulatedMs / 60000))}분`;
     elements.totalCycles.textContent = `${state.completedCycles}회`;
+    elements.totalSessions.textContent = `${history.totalSessions}회`;
+    elements.currentStreak.textContent = `${history.currentStreak}일째`;
+    renderStopReasonSelection();
     saveSession();
     showScreen("done");
   }
 
   function restore() {
     elements.versionBadge.textContent = state.version.toUpperCase();
+    renderStreakBanner();
     if (state.timer) {
       if (state.timer.endAt <= Date.now()) finishTimer();
       else renderTimer();
@@ -389,6 +464,9 @@
     if (state.screen === "done") {
       elements.totalMinutes.textContent = `${Math.max(1, Math.round(state.accumulatedMs / 60000))}분`;
       elements.totalCycles.textContent = `${state.completedCycles}회`;
+      elements.totalSessions.textContent = `${state.lifetimeSessionCount ?? "-"}회`;
+      elements.currentStreak.textContent = `${state.currentStreakDays ?? "-"}일째`;
+      renderStopReasonSelection();
       return showScreen("done", false);
     }
     showScreen(state.version === "v1" ? "home" : "state", false);
@@ -420,6 +498,21 @@
     elements.announcer.textContent = "작업 종류가 선택되었습니다.";
   }
 
+  function renderStopReasonSelection() {
+    document.querySelectorAll("[data-stop-reason]").forEach((button) => {
+      button.setAttribute("aria-pressed", String(button.dataset.stopReason === state.stopReason));
+    });
+  }
+
+  function selectStopReason(reason) {
+    if (!STOP_REASONS.has(reason) || state.stopReason === reason) return;
+    state.stopReason = reason;
+    renderStopReasonSelection();
+    trackEvent("stop_reason_selected", { stop_reason: reason });
+    saveSession();
+    elements.announcer.textContent = "중단 이유가 선택되었습니다.";
+  }
+
   function bindEvents() {
     document.querySelector("[data-action='v1-start']").addEventListener("click", startTimer);
     document.querySelector("[data-action='guide-start']").addEventListener("click", startTimer);
@@ -429,6 +522,7 @@
     document.querySelector("[data-action='home']").addEventListener("click", (event) => { event.preventDefault(); restart(); });
     document.querySelectorAll("[data-state]").forEach((button) => button.addEventListener("click", () => selectTaskState(button.dataset.state)));
     document.querySelectorAll("[data-task-category]").forEach((button) => button.addEventListener("click", () => selectTaskCategory(button.dataset.taskCategory)));
+    document.querySelectorAll("[data-stop-reason]").forEach((button) => button.addEventListener("click", () => selectStopReason(button.dataset.stopReason)));
 
     document.querySelector("[data-action='ask-exit']").addEventListener("click", () => elements.exitDialog.showModal());
     document.querySelector("[data-action='cancel-exit']").addEventListener("click", () => elements.exitDialog.close("cancel"));
