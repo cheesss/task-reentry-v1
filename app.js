@@ -11,6 +11,7 @@
   const STOP_REASONS = new Set([
     "task_done", "tired", "interrupted_external", "cant_focus", "no_specific_reason", "prefer_not_to_say",
   ]);
+  const QUICK_EXIT_THRESHOLD_MS = 5000;
   const STORAGE = {
     userId: "task_reentry_user_id",
     assignedVersion: "task_reentry_assigned_version",
@@ -66,6 +67,8 @@
     doneTitle: document.querySelector("[data-done-title]"),
     doneDescription: document.querySelector("[data-done-description]"),
     stopReasonBlock: document.querySelector("[data-stop-reason-block]"),
+    sessionSummary: document.querySelector("[data-session-summary]"),
+    quickExitActions: document.querySelector("[data-quick-exit-actions]"),
     streakBanners: Array.from(document.querySelectorAll("[data-streak-banner]")),
     exitDialog: document.querySelector("[data-exit-dialog]"),
     announcer: document.querySelector("[data-announcer]"),
@@ -128,6 +131,7 @@
       feedback: null,
       stopReason: null,
       finishReason: null,
+      quickExit: false,
       finishedAt: null,
       pageViewTracked: false,
       lifetimeSessionCount: null,
@@ -437,10 +441,12 @@
 
   function finishSession(reason = "stopped") {
     clearInterval(timerInterval);
+    let quickExit = false;
     if (state.timer) {
       const partialMs = Math.max(0, Date.now() - state.timer.startedAt);
       state.accumulatedMs += partialMs;
-      trackEvent("early_exit", { elapsed_in_cycle_ms: partialMs, reason });
+      quickExit = state.completedCycles === 0 && partialMs < QUICK_EXIT_THRESHOLD_MS;
+      trackEvent("early_exit", { elapsed_in_cycle_ms: partialMs, reason, quick_exit: quickExit });
       state.timer = null;
     } else {
       if (state.completedCycles === 1 && state.firstContinue === null) {
@@ -449,9 +455,10 @@
       }
       if (reason !== "independent_continue") trackEvent("stop_after_5min");
     }
+    state.quickExit = quickExit;
     state.finishReason = reason;
     state.finishedAt = Date.now();
-    const history = recordHistory();
+    const history = quickExit ? loadHistory() : recordHistory();
     state.lifetimeSessionCount = history.totalSessions;
     state.currentStreakDays = history.currentStreak;
     trackEvent("session_finished", {
@@ -460,6 +467,8 @@
       total_active_ms: state.accumulatedMs,
       lifetime_session_count: history.totalSessions,
       current_streak_days: history.currentStreak,
+      counted_in_retention: !quickExit,
+      quick_exit: quickExit,
     });
     elements.totalMinutes.textContent = `${Math.max(1, Math.round(state.accumulatedMs / 60000))}분`;
     elements.totalCycles.textContent = `${state.completedCycles}회`;
@@ -471,14 +480,35 @@
     showScreen("done");
   }
 
+  function resumeQuickExit() {
+    if (!state.quickExit) return;
+    const now = Date.now();
+    state.quickExit = false;
+    state.finishReason = null;
+    state.finishedAt = null;
+    state.timer = { startedAt: now, endAt: now + timerDuration(), cycleIndex: state.cycleIndex || 1 };
+    trackEvent("quick_exit_resumed");
+    saveSession();
+    renderTimer();
+  }
+
   function renderDoneContent() {
     const independent = state.finishReason === "independent_continue" || state.reentryOutcome === "independent_continue";
-    elements.doneEyebrow.textContent = independent ? "작업 흐름을 되찾았어요" : "작업 재진입을 마쳤어요";
-    elements.doneTitle.textContent = independent ? "이제 그대로 이어가세요" : "오늘은 여기까지";
-    elements.doneDescription.innerHTML = independent
-      ? "타이머 없이도 이어갈 수 있다면 재진입에 성공한 거예요.<br />이 화면은 이제 닫아도 됩니다."
-      : "5분이라도 다시 시작했다는 것으로 충분합니다.<br />다시 흐름이 끊기면 언제든 돌아오세요.";
-    elements.stopReasonBlock.hidden = independent;
+    const quickExit = Boolean(state.quickExit);
+    if (quickExit) {
+      elements.doneEyebrow.textContent = "잠깐만요";
+      elements.doneTitle.textContent = "잘못 누르셨나요?";
+      elements.doneDescription.innerHTML = "괜찮아요, 바로 다시 시작할 수 있어요.<br />정말 그만두고 싶다면 처음으로 돌아가도 됩니다.";
+    } else {
+      elements.doneEyebrow.textContent = independent ? "작업 흐름을 되찾았어요" : "작업 재진입을 마쳤어요";
+      elements.doneTitle.textContent = independent ? "이제 그대로 이어가세요" : "오늘은 여기까지";
+      elements.doneDescription.innerHTML = independent
+        ? "타이머 없이도 이어갈 수 있다면 재진입에 성공한 거예요.<br />이 화면은 이제 닫아도 됩니다."
+        : "5분이라도 다시 시작했다는 것으로 충분합니다.<br />다시 흐름이 끊기면 언제든 돌아오세요.";
+    }
+    elements.stopReasonBlock.hidden = independent || quickExit;
+    elements.sessionSummary.hidden = quickExit;
+    elements.quickExitActions.hidden = !quickExit;
   }
 
   function restore() {
@@ -554,6 +584,7 @@
     document.querySelector("[data-action='guide-start']").addEventListener("click", startTimer);
     document.querySelector("[data-action='continue']").addEventListener("click", continueTimer);
     document.querySelector("[data-action='continue-independently']").addEventListener("click", continueIndependently);
+    document.querySelector("[data-action='resume-quick-exit']").addEventListener("click", resumeQuickExit);
     document.querySelector("[data-action='stop']").addEventListener("click", () => finishSession("stopped"));
     document.querySelector("[data-action='restart']").addEventListener("click", restart);
     document.querySelector("[data-action='home']").addEventListener("click", (event) => { event.preventDefault(); restart(); });

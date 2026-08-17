@@ -202,3 +202,21 @@ from public.sessions
 where stop_reason is not null
 group by stop_reason
 order by average_cycle asc;
+
+-- 18) 즉시 이탈(quick exit) 비율과 "이어서 하기" 복구율
+-- 타이머 시작 5초 안에 나간 세션은 누적 재진입 카운트에서 제외됨. 그중 실제로 복구했는지 확인
+with quick_exits as (
+  select distinct session_id
+  from public.events
+  where event_name = 'early_exit' and (metadata ->> 'quick_exit')::boolean is true
+), resumed as (
+  select distinct session_id
+  from public.events
+  where event_name = 'quick_exit_resumed'
+)
+select
+  count(*) as quick_exit_sessions,
+  count(*) filter (where r.session_id is not null) as resumed_sessions,
+  round(100.0 * count(*) filter (where r.session_id is not null) / nullif(count(*), 0), 2) as resume_rate_pct
+from quick_exits q
+left join resumed r using (session_id);

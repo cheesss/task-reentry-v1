@@ -82,6 +82,7 @@ ID가 비어 있으면 GA 스크립트를 불러오지 않으며 모든 이벤�
 - `feedback_selected`
 - `task_category_selected` (첫 5분 완료 후 카테고리를 선택할 때 기록)
 - `stop_reason_selected` (종료 화면에서 중단 이유를 선택할 때 기록)
+- `quick_exit_resumed` (즉시 이탈 후 "이어서 하기"로 복구할 때 기록)
 - `tab_hidden`, `tab_visible`
 
 모든 이벤트에 버전, 상태, 선택된 작업 종류, cycle, 시간, page/session 경과시간을 포함합니다. V1의 `task_state`는 `null`입니다. `task_category`는 첫 5분 완료 뒤 선택적으로 수집되며 가이드나 Task State 판정에는 사용하지 않습니다.
@@ -91,6 +92,10 @@ ID가 비어 있으면 GA 스크립트를 불러오지 않으며 모든 이벤�
 브라우저 `localStorage`(`task_reentry_history_v1`)에 기기 단위로 누적 재진입 세션 수(`totalSessions`)와 연속 사용일(`currentStreak`)을 기록합니다. 세션이 `done` 화면에 도달할 때마다 갱신되며, 홈/상태선택 화면에는 "연속 N일째" 또는 "벌써 N번째 재진입" 배너로 보여주고, 종료 화면에는 누적 세션 수와 연속일을 함께 표시합니다.
 
 세션이 끝날 때 그 시점의 누적값을 `sessions.lifetime_session_count`, `sessions.current_streak_days` 컬럼과 `session_finished` 이벤트 metadata에 스냅샷으로 함께 저장하므로, "재방문 횟수가 많을수록 Continuation Rate가 높아지는가"를 SQL로 검증할 수 있습니다. 로그인이 없으므로 기기를 바꾸면 기록도 초기화됩니다.
+
+## 즉시 이탈(quick exit) 처리
+
+타이머 시작 후 5초 안에 "그만하기"로 나가면(아직 5분을 한 번도 못 채운 상태) 실수 클릭일 가능성이 높다고 보고 다르게 처리합니다. 이 경우 누적 재진입 세션 수·연속 사용일(streak)을 올리지 않고, 종료 화면 문구도 "잘못 누르셨나요?"로 바꿔 "이어서 하기" 버튼을 보여줍니다. 클릭하면 새 세션을 만들지 않고 같은 첫 번째 5분 타이머를 다시 시작합니다. `early_exit`/`session_finished` 이벤트 metadata에 `quick_exit`, `counted_in_retention` 값을 남겨 분석에서 구분할 수 있고, `analysis_queries.sql`의 18번 쿼리로 즉시 이탈 비율과 "이어서 하기" 복구율을 확인합니다.
 
 ## 중단 이유
 

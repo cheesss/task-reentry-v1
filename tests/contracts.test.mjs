@@ -72,6 +72,15 @@ test("중단 이유 선택 계약을 포함한다", () => {
   assert.match(sql, /stop_reason text/);
 });
 
+test("즉시 이탈(quick exit) 복구 계약을 포함한다", () => {
+  assert.match(html, /data-action="resume-quick-exit"/);
+  assert.match(html, /data-quick-exit-actions/);
+  assert.match(app, /QUICK_EXIT_THRESHOLD_MS/);
+  assert.match(app, /function resumeQuickExit/);
+  assert.match(app, /"quick_exit_resumed"/);
+  assert.match(analysis, /quick_exit/);
+});
+
 test("Supabase RLS와 SELECT 차단 계약을 포함한다", () => {
   assert.match(sql, /enable row level security/i);
   assert.doesNotMatch(sql, /grant\s+select\s+on\s+public\.(sessions|events)\s+to\s+anon/i);

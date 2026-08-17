@@ -111,7 +111,10 @@
           <h1 id="done-title" data-done-title tabindex="-1">오늘은 여기까지</h1>
           <p class="description" data-done-description>5분이라도 다시 시작했다는 것으로 충분합니다.<br />다시 흐름이 끊기면 언제든 돌아오세요.</p>
         </div>
-        <dl class="session-summary">
+        <div class="actions" data-quick-exit-actions hidden>
+          <button class="button button--primary" type="button" data-action="resume-quick-exit">이어서 하기</button>
+        </div>
+        <dl class="session-summary" data-session-summary>
           <div><dt>오늘 진행한 시간</dt><dd data-total-minutes>5분</dd></div>
           <div><dt>총 5분 세션</dt><dd data-total-cycles>1회</dd></div>
           <div><dt>누적 재진입 세션</dt><dd data-total-sessions>1회</dd></div>
