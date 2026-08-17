@@ -77,7 +77,7 @@ ID가 비어 있으면 GA 스크립트를 불러오지 않으며 모든 이벤�
 - `page_view`
 - `state_selected`, `guide_viewed`
 - `start_5min`, `complete_5min`
-- `continue_5min`, `extra_5min_complete`
+- `continue_5min`, `continue_independently`, `extra_5min_complete`
 - `stop_after_5min`, `early_exit`, `session_finished`
 - `feedback_selected`
 - `task_category_selected` (첫 5분 완료 후 카테고리를 선택할 때 기록)
@@ -103,6 +103,8 @@ Supabase SQL Editor에서 `analysis_queries.sql`의 쿼리를 실행합니다.
 - Start Rate = `started_at 존재 / 전체 session`
 - Completion Rate = `first_completed_at 존재 / started_at 존재`
 - Continuation Rate = `first_continue = true / first_completed_at 존재`
+- Re-entry Success Rate = `reentry_outcome이 timer_continue 또는 independent_continue / first_completed_at 존재`
+- Independent Continuation Rate = `reentry_outcome = independent_continue / first_completed_at 존재`
 - Early Exit Rate = `early_exit session / start_5min session`
 - Average Cycle = `avg(total_cycles)`
 
@@ -110,7 +112,7 @@ Task Category 분석 쿼리는 카테고리별 및 `Task State × Task Category`
 
 카테고리를 첫 5분 완료 후에만 묻기 때문에, 카테고리가 기록된 표본의 Completion Rate는 구조적으로 100%입니다. 카테고리별 완료율을 비편향적으로 비교하려면 시작 전에 카테고리를 수집해야 하며, 현재 UX 요구사항에서는 Continuation Rate가 유효한 카테고리 비교 지표입니다.
 
-Main KPI는 V1과 V2의 **Continuation Rate** 차이입니다. V2는 `task_state`별 사용자 수, 시작률, 완료율, 지속률과 평균 cycle도 비교합니다. 보조 KPI로 재방문(누적 세션 수·연속 사용일) 버킷별 Continuation Rate를 비교해 반복 재진입이 실제로 지속률을 높이는지도 확인합니다(14, 15번 쿼리).
+Main KPI는 V1과 V2의 **Re-entry Success Rate** 차이입니다. 타이머를 다시 시작한 비율은 기존 Continuation Rate로, 타이머 없이 이어가겠다고 응답한 비율은 Independent Continuation Rate로 함께 확인합니다. `independent_continue`는 실제 후속 행동이 아닌 자기보고 의도라는 한계가 있습니다. V2는 `task_state`별 사용자 수, 시작률, 완료율, 재진입 성공률과 평균 cycle도 비교합니다.
 
 공개 관리자 페이지는 만들지 않았습니다. anon key로 전체 분석 데이터를 읽게 하면 RLS와 개인정보 최소화 원칙을 깨기 때문입니다. 분석은 인증된 Supabase Dashboard의 SQL Editor 또는 CSV export에서 수행합니다.
 

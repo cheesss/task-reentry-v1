@@ -91,6 +91,7 @@
           </fieldset>
           <div class="actions">
             <button class="button button--primary" type="button" data-action="continue">5분 더 할래</button>
+            <button class="button button--secondary" type="button" data-action="continue-independently">이제 혼자 이어서 할게</button>
             <button class="button button--secondary" type="button" data-action="stop">오늘은 여기까지</button>
           </div>
           <fieldset class="feedback" data-feedback-block>
@@ -106,9 +107,9 @@
 
       <section class="screen screen--done" data-screen="done" aria-labelledby="done-title" hidden>
         <div class="content-block">
-          <p class="eyebrow">작업 재진입을 마쳤어요</p>
-          <h1 id="done-title" tabindex="-1">오늘은 여기까지</h1>
-          <p class="description">5분이라도 다시 시작했다는 것으로 충분합니다.<br />다시 흐름이 끊기면 언제든 돌아오세요.</p>
+          <p class="eyebrow" data-done-eyebrow>작업 재진입을 마쳤어요</p>
+          <h1 id="done-title" data-done-title tabindex="-1">오늘은 여기까지</h1>
+          <p class="description" data-done-description>5분이라도 다시 시작했다는 것으로 충분합니다.<br />다시 흐름이 끊기면 언제든 돌아오세요.</p>
         </div>
         <dl class="session-summary">
           <div><dt>오늘 진행한 시간</dt><dd data-total-minutes>5분</dd></div>
