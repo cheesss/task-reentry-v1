@@ -13,6 +13,7 @@ create table if not exists public.sessions (
   first_completed_at timestamptz,
   finished_at timestamptz,
   first_continue boolean,
+  reentry_outcome text check (reentry_outcome is null or reentry_outcome in ('timer_continue', 'independent_continue', 'stopped')),
   total_cycles integer not null default 0 check (total_cycles >= 0),
   feedback text check (feedback is null or feedback in ('worse', 'same', 'better')),
   stop_reason text check (stop_reason is null or stop_reason in ('task_done', 'tired', 'interrupted_external', 'cant_focus', 'no_specific_reason', 'prefer_not_to_say')),
@@ -44,6 +45,7 @@ alter table public.events add column if not exists task_category text;
 alter table public.sessions add column if not exists lifetime_session_count integer;
 alter table public.sessions add column if not exists current_streak_days integer;
 alter table public.sessions add column if not exists stop_reason text;
+alter table public.sessions add column if not exists reentry_outcome text;
 
 do $$
 begin
@@ -66,6 +68,10 @@ begin
   if not exists (select 1 from pg_constraint where conname = 'sessions_stop_reason_check') then
     alter table public.sessions add constraint sessions_stop_reason_check
       check (stop_reason is null or stop_reason in ('task_done', 'tired', 'interrupted_external', 'cant_focus', 'no_specific_reason', 'prefer_not_to_say'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'sessions_reentry_outcome_check') then
+    alter table public.sessions add constraint sessions_reentry_outcome_check
+      check (reentry_outcome is null or reentry_outcome in ('timer_continue', 'independent_continue', 'stopped'));
   end if;
 end $$;
 

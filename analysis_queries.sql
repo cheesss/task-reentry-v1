@@ -13,6 +13,8 @@ select
   round(100.0 * count(*) filter (where started_at is not null) / nullif(count(*), 0), 2) as start_rate_pct,
   round(100.0 * count(*) filter (where first_completed_at is not null) / nullif(count(*) filter (where started_at is not null), 0), 2) as completion_rate_pct,
   round(100.0 * count(*) filter (where first_continue is true) / nullif(count(*) filter (where first_completed_at is not null), 0), 2) as continuation_rate_pct,
+  round(100.0 * count(*) filter (where reentry_outcome in ('timer_continue', 'independent_continue')) / nullif(count(*) filter (where first_completed_at is not null), 0), 2) as reentry_success_rate_pct,
+  round(100.0 * count(*) filter (where reentry_outcome = 'independent_continue') / nullif(count(*) filter (where first_completed_at is not null), 0), 2) as independent_continuation_rate_pct,
   round(avg(total_cycles)::numeric, 2) as average_cycle
 from public.sessions
 group by app_version
@@ -26,6 +28,7 @@ select
   round(100.0 * count(*) filter (where started_at is not null) / nullif(count(*), 0), 2) as start_rate_pct,
   round(100.0 * count(*) filter (where first_completed_at is not null) / nullif(count(*) filter (where started_at is not null), 0), 2) as completion_rate_pct,
   round(100.0 * count(*) filter (where first_continue is true) / nullif(count(*) filter (where first_completed_at is not null), 0), 2) as continuation_rate_pct,
+  round(100.0 * count(*) filter (where reentry_outcome in ('timer_continue', 'independent_continue')) / nullif(count(*) filter (where first_completed_at is not null), 0), 2) as reentry_success_rate_pct,
   round(avg(total_cycles)::numeric, 2) as average_cycle
 from public.sessions
 where app_version = 'v2'
@@ -54,7 +57,7 @@ left join exited e using (session_id);
 -- 6) 이벤트 퍼널 원자료
 select app_version, event_name, count(distinct session_id) as sessions
 from public.events
-where event_name in ('page_view', 'start_5min', 'complete_5min', 'continue_5min', 'early_exit', 'session_finished')
+where event_name in ('page_view', 'start_5min', 'complete_5min', 'continue_5min', 'continue_independently', 'early_exit', 'session_finished')
 group by app_version, event_name
 order by app_version, event_name;
 

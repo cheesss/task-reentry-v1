@@ -62,6 +62,10 @@
     totalCycles: document.querySelector("[data-total-cycles]"),
     totalSessions: document.querySelector("[data-total-sessions]"),
     currentStreak: document.querySelector("[data-current-streak]"),
+    doneEyebrow: document.querySelector("[data-done-eyebrow]"),
+    doneTitle: document.querySelector("[data-done-title]"),
+    doneDescription: document.querySelector("[data-done-description]"),
+    stopReasonBlock: document.querySelector("[data-stop-reason-block]"),
     streakBanners: Array.from(document.querySelectorAll("[data-streak-banner]")),
     exitDialog: document.querySelector("[data-exit-dialog]"),
     announcer: document.querySelector("[data-announcer]"),
@@ -120,8 +124,10 @@
       accumulatedMs: 0,
       firstCompletedAt: null,
       firstContinue: null,
+      reentryOutcome: null,
       feedback: null,
       stopReason: null,
+      finishReason: null,
       finishedAt: null,
       pageViewTracked: false,
       lifetimeSessionCount: null,
@@ -138,6 +144,7 @@
       const parsed = JSON.parse(localStorage.getItem(STORAGE.appState));
       const requestedVersion = getExperimentVersion();
       if (!parsed || parsed.schemaVersion !== 2 || parsed.version !== requestedVersion) return freshSession(requestedVersion);
+      parsed.reentryOutcome ??= parsed.firstContinue === true ? "timer_continue" : parsed.firstContinue === false ? "stopped" : null;
       return parsed;
     } catch (error) {
       console.warn("저장된 진행 상태를 복구하지 못했습니다.", error);
@@ -280,6 +287,7 @@
       first_completed_at: state.firstCompletedAt ? new Date(state.firstCompletedAt).toISOString() : null,
       finished_at: state.finishedAt ? new Date(state.finishedAt).toISOString() : null,
       first_continue: state.firstContinue,
+      reentry_outcome: state.reentryOutcome,
       total_cycles: state.completedCycles,
       feedback: state.feedback,
       stop_reason: state.stopReason,
@@ -410,9 +418,21 @@
   }
 
   function continueTimer() {
-    if (state.completedCycles === 1 && state.firstContinue === null) state.firstContinue = true;
+    if (state.completedCycles === 1 && state.firstContinue === null) {
+      state.firstContinue = true;
+      state.reentryOutcome = "timer_continue";
+    }
     saveSession();
     startTimer();
+  }
+
+  function continueIndependently() {
+    if (state.completedCycles === 1 && state.firstContinue === null) {
+      state.firstContinue = false;
+      state.reentryOutcome = "independent_continue";
+    }
+    trackEvent("continue_independently");
+    finishSession("independent_continue");
   }
 
   function finishSession(reason = "stopped") {
@@ -423,9 +443,13 @@
       trackEvent("early_exit", { elapsed_in_cycle_ms: partialMs, reason });
       state.timer = null;
     } else {
-      if (state.completedCycles === 1 && state.firstContinue === null) state.firstContinue = false;
-      trackEvent("stop_after_5min");
+      if (state.completedCycles === 1 && state.firstContinue === null) {
+        state.firstContinue = false;
+        state.reentryOutcome = reason === "independent_continue" ? "independent_continue" : "stopped";
+      }
+      if (reason !== "independent_continue") trackEvent("stop_after_5min");
     }
+    state.finishReason = reason;
     state.finishedAt = Date.now();
     const history = recordHistory();
     state.lifetimeSessionCount = history.totalSessions;
@@ -441,9 +465,20 @@
     elements.totalCycles.textContent = `${state.completedCycles}회`;
     elements.totalSessions.textContent = `${history.totalSessions}회`;
     elements.currentStreak.textContent = `${history.currentStreak}일째`;
+    renderDoneContent();
     renderStopReasonSelection();
     saveSession();
     showScreen("done");
+  }
+
+  function renderDoneContent() {
+    const independent = state.finishReason === "independent_continue" || state.reentryOutcome === "independent_continue";
+    elements.doneEyebrow.textContent = independent ? "작업 흐름을 되찾았어요" : "작업 재진입을 마쳤어요";
+    elements.doneTitle.textContent = independent ? "이제 그대로 이어가세요" : "오늘은 여기까지";
+    elements.doneDescription.innerHTML = independent
+      ? "타이머 없이도 이어갈 수 있다면 재진입에 성공한 거예요.<br />이 화면은 이제 닫아도 됩니다."
+      : "5분이라도 다시 시작했다는 것으로 충분합니다.<br />다시 흐름이 끊기면 언제든 돌아오세요.";
+    elements.stopReasonBlock.hidden = independent;
   }
 
   function restore() {
@@ -466,6 +501,7 @@
       elements.totalCycles.textContent = `${state.completedCycles}회`;
       elements.totalSessions.textContent = `${state.lifetimeSessionCount ?? "-"}회`;
       elements.currentStreak.textContent = `${state.currentStreakDays ?? "-"}일째`;
+      renderDoneContent();
       renderStopReasonSelection();
       return showScreen("done", false);
     }
@@ -517,6 +553,7 @@
     document.querySelector("[data-action='v1-start']").addEventListener("click", startTimer);
     document.querySelector("[data-action='guide-start']").addEventListener("click", startTimer);
     document.querySelector("[data-action='continue']").addEventListener("click", continueTimer);
+    document.querySelector("[data-action='continue-independently']").addEventListener("click", continueIndependently);
     document.querySelector("[data-action='stop']").addEventListener("click", () => finishSession("stopped"));
     document.querySelector("[data-action='restart']").addEventListener("click", restart);
     document.querySelector("[data-action='home']").addEventListener("click", (event) => { event.preventDefault(); restart(); });

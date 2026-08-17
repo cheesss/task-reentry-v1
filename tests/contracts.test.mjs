@@ -25,6 +25,15 @@ test("Task Category를 첫 완료 후 선택형 metadata로 수집한다", () =>
   assert.match(sql, /task_category text/);
 });
 
+test("독립적으로 이어가기와 Re-entry Success 측정 계약을 포함한다", () => {
+  assert.match(html, /data-action="continue-independently"/);
+  assert.match(html, /이제 혼자 이어서 할게/);
+  assert.match(app, /"continue_independently"/);
+  assert.match(app, /reentryOutcome/);
+  assert.match(sql, /reentry_outcome text/);
+  assert.match(analysis, /reentry_success_rate_pct/);
+});
+
 test("Task Category 분석은 모든 결과에 표본 수 n을 포함한다", () => {
   assert.match(analysis, /Task Category별 session 수/);
   assert.match(analysis, /Task State × Task Category별 Continuation Rate/);
@@ -32,7 +41,7 @@ test("Task Category 분석은 모든 결과에 표본 수 n을 포함한다", ()
 });
 
 test("필수 이벤트를 모두 추적한다", () => {
-  for (const event of ["page_view", "state_selected", "guide_viewed", "start_5min", "complete_5min", "continue_5min", "stop_after_5min", "extra_5min_complete", "feedback_selected", "session_finished", "early_exit"]) {
+  for (const event of ["page_view", "state_selected", "guide_viewed", "start_5min", "complete_5min", "continue_5min", "continue_independently", "stop_after_5min", "extra_5min_complete", "feedback_selected", "session_finished", "early_exit"]) {
     assert.match(app, new RegExp(`"${event}"`));
   }
 });
