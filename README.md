@@ -82,6 +82,7 @@ ID가 비어 있으면 GA 스크립트를 불러오지 않으며 모든 이벤�
 - `feedback_selected`
 - `task_category_selected` (첫 5분 완료 후 카테고리를 선택할 때 기록)
 - `stop_reason_selected` (종료 화면에서 중단 이유를 선택할 때 기록)
+- `guide_relevance_rated` (가이드 화면에서 관련성을 평가할 때 기록, V2 전용)
 - `tab_hidden`, `tab_visible`
 
 모든 이벤트에 버전, 상태, 선택된 작업 종류, cycle, 시간, page/session 경과시간을 포함합니다. V1의 `task_state`는 `null`입니다. `task_category`는 첫 5분 완료 뒤 선택적으로 수집되며 가이드나 Task State 판정에는 사용하지 않습니다.
@@ -91,6 +92,10 @@ ID가 비어 있으면 GA 스크립트를 불러오지 않으며 모든 이벤�
 브라우저 `localStorage`(`task_reentry_history_v1`)에 기기 단위로 누적 재진입 세션 수(`totalSessions`)와 연속 사용일(`currentStreak`)을 기록합니다. 세션이 `done` 화면에 도달할 때마다 갱신되며, 홈/상태선택 화면에는 "연속 N일째" 또는 "벌써 N번째 재진입" 배너로 보여주고, 종료 화면에는 누적 세션 수와 연속일을 함께 표시합니다.
 
 세션이 끝날 때 그 시점의 누적값을 `sessions.lifetime_session_count`, `sessions.current_streak_days` 컬럼과 `session_finished` 이벤트 metadata에 스냅샷으로 함께 저장하므로, "재방문 횟수가 많을수록 Continuation Rate가 높아지는가"를 SQL로 검증할 수 있습니다. 로그인이 없으므로 기기를 바꾸면 기록도 초기화됩니다.
+
+## 가이드 관련성 평가
+
+V2의 가이드 화면에서 "이 안내가 지금 상황과 잘 맞나요?"를 선택 사항으로 물어 `sessions.guide_relevance`(`not_relevant`/`neutral`/`relevant`)에 저장합니다. Task State별 완료율·재진입 성공률 차이는 보이더라도 "왜" 특정 상태의 가이드가 덜 통하는지는 알기 어려웠는데, 이 평가를 타이머 시작 전(결과를 모르는 시점)에 받아서 가이드 문구 자체의 관련성을 outcome과 분리해 측정합니다. `analysis_queries.sql`의 18번(Task State별 관련성 분포), 19번(관련성과 재진입 성공률의 관계) 쿼리로 확인합니다.
 
 ## 중단 이유
 

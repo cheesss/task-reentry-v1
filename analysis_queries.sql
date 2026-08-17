@@ -202,3 +202,29 @@ from public.sessions
 where stop_reason is not null
 group by stop_reason
 order by average_cycle asc;
+
+-- 18) Task State별 가이드 관련성 평가 분포
+-- 어떤 상태의 가이드가 "안 맞아요"를 많이 받는지 확인해 가이드 문구를 개선할 근거로 사용
+select
+  task_state,
+  guide_relevance,
+  count(*) as n
+from public.sessions
+where task_state is not null and guide_relevance is not null
+group by task_state, guide_relevance
+order by task_state, guide_relevance;
+
+-- 19) 가이드 관련성과 재진입 성공률의 관계
+-- 가이드가 "안 맞다"고 답한 세션이 실제로 재진입 성공률도 낮은지 검증
+select
+  guide_relevance,
+  count(*) as n,
+  round(
+    100.0 * count(*) filter (where reentry_outcome in ('timer_continue', 'independent_continue'))
+    / nullif(count(*) filter (where first_completed_at is not null), 0),
+    2
+  ) as reentry_success_rate_pct
+from public.sessions
+where guide_relevance is not null
+group by guide_relevance
+order by reentry_success_rate_pct desc;

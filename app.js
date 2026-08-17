@@ -11,6 +11,7 @@
   const STOP_REASONS = new Set([
     "task_done", "tired", "interrupted_external", "cant_focus", "no_specific_reason", "prefer_not_to_say",
   ]);
+  const GUIDE_RELEVANCE = new Set(["not_relevant", "neutral", "relevant"]);
   const STORAGE = {
     userId: "task_reentry_user_id",
     assignedVersion: "task_reentry_assigned_version",
@@ -115,6 +116,7 @@
       version,
       taskState: null,
       taskCategory: null,
+      guideRelevance: null,
       screen: version === "v1" ? "home" : "state",
       pageOpenedAt: now,
       sessionStartedAt: null,
@@ -282,6 +284,7 @@
       app_version: state.version,
       task_state: state.taskState,
       task_category: state.taskCategory,
+      guide_relevance: state.guideRelevance,
       page_opened_at: new Date(state.pageOpenedAt).toISOString(),
       started_at: state.sessionStartedAt ? new Date(state.sessionStartedAt).toISOString() : null,
       first_completed_at: state.firstCompletedAt ? new Date(state.firstCompletedAt).toISOString() : null,
@@ -338,7 +341,23 @@
       return item;
     }));
     elements.guideCta.textContent = guide.cta;
+    renderGuideRelevanceSelection();
     showScreen("guide");
+  }
+
+  function renderGuideRelevanceSelection() {
+    document.querySelectorAll("[data-guide-relevance]").forEach((button) => {
+      button.setAttribute("aria-pressed", String(button.dataset.guideRelevance === state.guideRelevance));
+    });
+  }
+
+  function selectGuideRelevance(value) {
+    if (!GUIDE_RELEVANCE.has(value) || state.guideRelevance === value) return;
+    state.guideRelevance = value;
+    renderGuideRelevanceSelection();
+    trackEvent("guide_relevance_rated", { task_state: state.taskState, guide_relevance: value });
+    saveSession();
+    elements.announcer.textContent = "가이드 평가가 선택되었습니다.";
   }
 
   function selectTaskState(taskState) {
@@ -560,6 +579,7 @@
     document.querySelectorAll("[data-state]").forEach((button) => button.addEventListener("click", () => selectTaskState(button.dataset.state)));
     document.querySelectorAll("[data-task-category]").forEach((button) => button.addEventListener("click", () => selectTaskCategory(button.dataset.taskCategory)));
     document.querySelectorAll("[data-stop-reason]").forEach((button) => button.addEventListener("click", () => selectStopReason(button.dataset.stopReason)));
+    document.querySelectorAll("[data-guide-relevance]").forEach((button) => button.addEventListener("click", () => selectGuideRelevance(button.dataset.guideRelevance)));
 
     document.querySelector("[data-action='ask-exit']").addEventListener("click", () => elements.exitDialog.showModal());
     document.querySelector("[data-action='cancel-exit']").addEventListener("click", () => elements.exitDialog.close("cancel"));

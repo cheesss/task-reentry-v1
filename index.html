@@ -48,6 +48,14 @@
           <p class="eyebrow" data-guide-eyebrow>재진입 가이드</p>
           <h1 id="guide-title" data-guide-title tabindex="-1"></h1>
           <ol class="guide-steps" data-guide-steps></ol>
+          <fieldset class="feedback" data-guide-relevance-block>
+            <legend>이 안내가 지금 상황과 잘 맞나요? <span>선택 사항</span></legend>
+            <div class="feedback-options">
+              <button type="button" data-guide-relevance="not_relevant">안 맞아요</button>
+              <button type="button" data-guide-relevance="neutral">그저 그래요</button>
+              <button type="button" data-guide-relevance="relevant">잘 맞아요</button>
+            </div>
+          </fieldset>
         </div>
         <button class="button button--primary" type="button" data-action="guide-start" data-guide-cta>5분 시작</button>
       </section>

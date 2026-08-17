@@ -72,6 +72,16 @@ test("중단 이유 선택 계약을 포함한다", () => {
   assert.match(sql, /stop_reason text/);
 });
 
+test("가이드 관련성 평가 계약을 포함한다", () => {
+  for (const value of ["not_relevant", "neutral", "relevant"]) {
+    assert.match(html, new RegExp(`data-guide-relevance="${value}"`));
+  }
+  assert.match(app, /"guide_relevance_rated"/);
+  assert.match(app, /function selectGuideRelevance/);
+  assert.match(sql, /guide_relevance text/);
+  assert.match(analysis, /가이드 관련성/);
+});
+
 test("Supabase RLS와 SELECT 차단 계약을 포함한다", () => {
   assert.match(sql, /enable row level security/i);
   assert.doesNotMatch(sql, /grant\s+select\s+on\s+public\.(sessions|events)\s+to\s+anon/i);

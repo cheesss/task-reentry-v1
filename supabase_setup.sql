@@ -8,6 +8,7 @@ create table if not exists public.sessions (
   app_version text not null check (app_version in ('v1', 'v2')),
   task_state text check (task_state is null or task_state in ('not_started', 'interrupted', 'distracted', 'finishing')),
   task_category text check (task_category is null or task_category in ('study', 'reading', 'assignment', 'work', 'coding', 'research', 'writing', 'presentation', 'exercise', 'cleaning', 'housework', 'administrative', 'communication', 'personal_project', 'hobby_creative', 'other', 'prefer_not_to_say')),
+  guide_relevance text check (guide_relevance is null or guide_relevance in ('not_relevant', 'neutral', 'relevant')),
   page_opened_at timestamptz not null,
   started_at timestamptz,
   first_completed_at timestamptz,
@@ -46,6 +47,7 @@ alter table public.sessions add column if not exists lifetime_session_count inte
 alter table public.sessions add column if not exists current_streak_days integer;
 alter table public.sessions add column if not exists stop_reason text;
 alter table public.sessions add column if not exists reentry_outcome text;
+alter table public.sessions add column if not exists guide_relevance text;
 
 do $$
 begin
@@ -72,6 +74,10 @@ begin
   if not exists (select 1 from pg_constraint where conname = 'sessions_reentry_outcome_check') then
     alter table public.sessions add constraint sessions_reentry_outcome_check
       check (reentry_outcome is null or reentry_outcome in ('timer_continue', 'independent_continue', 'stopped'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'sessions_guide_relevance_check') then
+    alter table public.sessions add constraint sessions_guide_relevance_check
+      check (guide_relevance is null or guide_relevance in ('not_relevant', 'neutral', 'relevant'));
   end if;
 end $$;
 
