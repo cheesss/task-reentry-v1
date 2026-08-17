@@ -18,6 +18,31 @@
         <span class="version-badge" data-version-badge>V2</span>
       </header>
 
+      <div class="goal-panel" data-goal-panel hidden>
+        <p class="goal-motivation" data-goal-motivation hidden></p>
+        <div class="goal-progress-row" data-goal-progress-row hidden>
+          <div class="goal-gauge" data-goal-gauge role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="오늘 목표 진행률">
+            <div class="goal-gauge-fill" data-goal-gauge-fill></div>
+          </div>
+          <p class="goal-progress-text" data-goal-progress-text></p>
+        </div>
+        <button class="goal-toggle" type="button" data-action="toggle-goal-form" data-goal-toggle>목표 설정하기</button>
+        <div class="goal-form" data-goal-form hidden>
+          <label class="goal-field">
+            <span>목표 (선택 사항)</span>
+            <input type="text" data-goal-text-input maxlength="60" placeholder="예: 학점 4.5 달성" />
+          </label>
+          <label class="goal-field">
+            <span>하루 목표 시간 (선택 사항, 시간 단위)</span>
+            <input type="number" data-goal-hours-input min="0.5" max="24" step="0.5" placeholder="예: 10" />
+          </label>
+          <div class="goal-form-actions">
+            <button class="button button--primary" type="button" data-action="save-goal">저장</button>
+            <button class="text-button" type="button" data-action="close-goal-form">닫기</button>
+          </div>
+        </div>
+      </div>
+
       <section class="screen screen--home" data-screen="home" aria-labelledby="home-title" hidden>
         <div class="content-block">
           <p class="eyebrow">다시 흐름에 들어가는 가장 작은 시간</p>

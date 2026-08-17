@@ -18,6 +18,7 @@
     appState: "task_reentry_app_state_v2",
     eventQueue: "task_reentry_event_queue_v2",
     history: "task_reentry_history_v1",
+    goal: "task_reentry_goal_v1",
   };
 
   const GUIDES = {
@@ -70,6 +71,16 @@
     sessionSummary: document.querySelector("[data-session-summary]"),
     quickExitActions: document.querySelector("[data-quick-exit-actions]"),
     streakBanners: Array.from(document.querySelectorAll("[data-streak-banner]")),
+    goalPanel: document.querySelector("[data-goal-panel]"),
+    goalMotivation: document.querySelector("[data-goal-motivation]"),
+    goalToggle: document.querySelector("[data-goal-toggle]"),
+    goalForm: document.querySelector("[data-goal-form]"),
+    goalTextInput: document.querySelector("[data-goal-text-input]"),
+    goalHoursInput: document.querySelector("[data-goal-hours-input]"),
+    goalProgressRow: document.querySelector("[data-goal-progress-row]"),
+    goalProgressText: document.querySelector("[data-goal-progress-text]"),
+    goalGauge: document.querySelector("[data-goal-gauge]"),
+    goalGaugeFill: document.querySelector("[data-goal-gauge-fill]"),
     exitDialog: document.querySelector("[data-exit-dialog]"),
     announcer: document.querySelector("[data-announcer]"),
   };
@@ -205,6 +216,81 @@
     });
   }
 
+  function withParticle(text) {
+    const lastChar = text.charCodeAt(text.length - 1);
+    if (lastChar < 0xac00 || lastChar > 0xd7a3) return `${text}를`;
+    return (lastChar - 0xac00) % 28 !== 0 ? `${text}을` : `${text}를`;
+  }
+
+  function loadGoal() {
+    let goal;
+    try {
+      goal = JSON.parse(localStorage.getItem(STORAGE.goal));
+    } catch (error) {
+      goal = null;
+    }
+    if (!goal || typeof goal !== "object") goal = { goalText: null, dailyGoalHours: null, todayDate: null, todayActiveMs: 0 };
+    const todayStr = todayLocalDateString();
+    if (goal.todayDate !== todayStr) {
+      goal.todayDate = todayStr;
+      goal.todayActiveMs = 0;
+      saveGoal(goal);
+    }
+    return goal;
+  }
+
+  function saveGoal(goal) {
+    localStorage.setItem(STORAGE.goal, JSON.stringify(goal));
+  }
+
+  function addTodayActiveMs(ms) {
+    if (!(ms > 0)) return;
+    const goal = loadGoal();
+    goal.todayActiveMs += ms;
+    saveGoal(goal);
+  }
+
+  function setGoal(goalText, dailyGoalHours) {
+    const goal = loadGoal();
+    const trimmed = (goalText || "").trim().slice(0, 60);
+    goal.goalText = trimmed || null;
+    goal.dailyGoalHours = Number.isFinite(dailyGoalHours) && dailyGoalHours > 0
+      ? Math.round(Math.min(24, dailyGoalHours) * 10) / 10
+      : null;
+    saveGoal(goal);
+    return goal;
+  }
+
+  function goalProgressPercent(goal) {
+    if (!goal.dailyGoalHours) return null;
+    return Math.min(100, Math.round((goal.todayActiveMs / (goal.dailyGoalHours * 3600000)) * 100));
+  }
+
+  function renderGoal() {
+    const goal = loadGoal();
+    const pct = goalProgressPercent(goal);
+
+    elements.goalMotivation.hidden = !goal.goalText;
+    elements.goalMotivation.textContent = goal.goalText ? `${withParticle(goal.goalText)} 위해 시작하자` : "";
+
+    elements.goalProgressRow.hidden = pct === null;
+    if (pct !== null) {
+      elements.goalProgressText.textContent = `오늘 목표 ${goal.dailyGoalHours}시간 중 ${pct}% 채웠어요`;
+      elements.goalGaugeFill.style.width = `${pct}%`;
+      elements.goalGauge.setAttribute("aria-valuenow", String(pct));
+    }
+
+    elements.goalToggle.textContent = goal.goalText || goal.dailyGoalHours ? "목표 수정" : "목표 설정하기";
+    elements.goalTextInput.value = goal.goalText || "";
+    elements.goalHoursInput.value = goal.dailyGoalHours || "";
+  }
+
+  function formatTotalMinutes(ms) {
+    const minutesText = `${Math.max(1, Math.round(ms / 60000))}분`;
+    const pct = goalProgressPercent(loadGoal());
+    return pct === null ? minutesText : `${minutesText} (오늘 목표의 ${pct}%)`;
+  }
+
   function isRemoteConfigured() {
     return Boolean(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
   }
@@ -325,6 +411,7 @@
 
   function showScreen(name, focus = true) {
     elements.screens.forEach((screen) => { screen.hidden = screen.dataset.screen !== name; });
+    elements.goalPanel.hidden = !(name === "home" || name === "state");
     state.screen = name;
     saveState();
     if (focus) {
@@ -461,6 +548,7 @@
     const history = quickExit ? loadHistory() : recordHistory();
     state.lifetimeSessionCount = history.totalSessions;
     state.currentStreakDays = history.currentStreak;
+    if (!quickExit) addTodayActiveMs(state.accumulatedMs);
     trackEvent("session_finished", {
       reason,
       total_cycles: state.completedCycles,
@@ -470,7 +558,7 @@
       counted_in_retention: !quickExit,
       quick_exit: quickExit,
     });
-    elements.totalMinutes.textContent = `${Math.max(1, Math.round(state.accumulatedMs / 60000))}분`;
+    elements.totalMinutes.textContent = formatTotalMinutes(state.accumulatedMs);
     elements.totalCycles.textContent = `${state.completedCycles}회`;
     elements.totalSessions.textContent = `${history.totalSessions}회`;
     elements.currentStreak.textContent = `${history.currentStreak}일째`;
@@ -514,6 +602,7 @@
   function restore() {
     elements.versionBadge.textContent = state.version.toUpperCase();
     renderStreakBanner();
+    renderGoal();
     if (state.timer) {
       if (state.timer.endAt <= Date.now()) finishTimer();
       else renderTimer();
@@ -527,7 +616,7 @@
       return showScreen("complete", false);
     }
     if (state.screen === "done") {
-      elements.totalMinutes.textContent = `${Math.max(1, Math.round(state.accumulatedMs / 60000))}분`;
+      elements.totalMinutes.textContent = formatTotalMinutes(state.accumulatedMs);
       elements.totalCycles.textContent = `${state.completedCycles}회`;
       elements.totalSessions.textContent = `${state.lifetimeSessionCount ?? "-"}회`;
       elements.currentStreak.textContent = `${state.currentStreakDays ?? "-"}일째`;
@@ -605,6 +694,15 @@
       trackEvent("feedback_selected", { feedback: state.feedback });
       saveSession();
     }));
+
+    elements.goalToggle.addEventListener("click", () => { elements.goalForm.hidden = !elements.goalForm.hidden; });
+    document.querySelector("[data-action='close-goal-form']").addEventListener("click", () => { elements.goalForm.hidden = true; });
+    document.querySelector("[data-action='save-goal']").addEventListener("click", () => {
+      setGoal(elements.goalTextInput.value, Number(elements.goalHoursInput.value));
+      renderGoal();
+      elements.goalForm.hidden = true;
+      elements.announcer.textContent = "목표가 저장되었습니다.";
+    });
 
     document.addEventListener("visibilitychange", () => trackEvent(document.hidden ? "tab_hidden" : "tab_visible"));
     window.addEventListener("online", flushEventQueue);

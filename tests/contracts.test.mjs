@@ -81,6 +81,19 @@ test("즉시 이탈(quick exit) 복구 계약을 포함한다", () => {
   assert.match(analysis, /quick_exit/);
 });
 
+test("목표 설정과 하루 진행률 계약을 포함한다 (로컬 전용)", () => {
+  assert.match(html, /data-goal-text-input/);
+  assert.match(html, /data-goal-hours-input/);
+  assert.match(html, /data-goal-gauge-fill/);
+  assert.match(app, /function goalProgressPercent/);
+  assert.match(html, /data-action="save-goal"/);
+  assert.match(app, /function setGoal/);
+  assert.match(app, /function addTodayActiveMs/);
+  assert.match(app, /function withParticle/);
+  assert.match(app, /task_reentry_goal_v1/);
+  assert.doesNotMatch(sql, /goal_text|daily_goal|goalText|dailyGoalHours/);
+});
+
 test("Supabase RLS와 SELECT 차단 계약을 포함한다", () => {
   assert.match(sql, /enable row level security/i);
   assert.doesNotMatch(sql, /grant\s+select\s+on\s+public\.(sessions|events)\s+to\s+anon/i);
