@@ -156,6 +156,12 @@
             <button type="button" data-stop-reason="prefer_not_to_say">답하지 않기</button>
           </div>
         </fieldset> 
+        <div class="task-category" data-tired-break hidden>
+          <p>피곤하셨군요. 무리해서 바로 재시작하지 않아도 돼요.</p>
+          <button type="button" class="button button--secondary" data-action="start-break">3분만 쉬어가기</button>
+          <p data-tired-break-timer></p>
+        </div>
+
         <button class="button button--primary" type="button" data-action="restart">처음으로 돌아가기</button>
       </section>
     </main>
