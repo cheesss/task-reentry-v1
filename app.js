@@ -68,6 +68,8 @@
     doneTitle: document.querySelector("[data-done-title]"),
     doneDescription: document.querySelector("[data-done-description]"),
     stopReasonBlock: document.querySelector("[data-stop-reason-block]"),
+    tiredBreakBlock: document.querySelector("[data-tired-break]"),
+    tiredBreakTimer: document.querySelector("[data-tired-break-timer]"),
     sessionSummary: document.querySelector("[data-session-summary]"),
     quickExitActions: document.querySelector("[data-quick-exit-actions]"),
     streakBanners: Array.from(document.querySelectorAll("[data-streak-banner]")),
@@ -657,8 +659,27 @@
     document.querySelectorAll("[data-stop-reason]").forEach((button) => {
       button.setAttribute("aria-pressed", String(button.dataset.stopReason === state.stopReason));
     });
+    elements.tiredBreakBlock.hidden = state.stopReason !== "tired";
   }
 
+  function startBreakTimer() {
+    const BREAK_MS = 3 * 60 * 1000;
+    const endAt = Date.now() + BREAK_MS;
+    const startBtn = elements.tiredBreakBlock.querySelector("[data-action='start-break']");
+          startBtn.hidden = true;
+
+    const breakInterval = setInterval(() => {
+      const remaining = endAt - Date.now();
+      if (remaining <= 0) {
+        clearInterval(breakInterval);
+        elements.tiredBreakTimer.textContent = "휴식 끝! 다시 돌아올 준비가 되면 시작하세요.";
+        return;
+      }
+      elements.tiredBreakTimer.textContent = `쉬는 중... ${formatRemaining(remaining)}`;
+    }, 250);
+
+    trackEvent("tired_break_started");
+  }
   function selectStopReason(reason) {
     if (!STOP_REASONS.has(reason) || state.stopReason === reason) return;
     state.stopReason = reason;
@@ -680,6 +701,7 @@
     document.querySelectorAll("[data-state]").forEach((button) => button.addEventListener("click", () => selectTaskState(button.dataset.state)));
     document.querySelectorAll("[data-task-category]").forEach((button) => button.addEventListener("click", () => selectTaskCategory(button.dataset.taskCategory)));
     document.querySelectorAll("[data-stop-reason]").forEach((button) => button.addEventListener("click", () => selectStopReason(button.dataset.stopReason)));
+    document.querySelector("[data-action='start-break']")?.addEventListener("click", startBreakTimer);
 
     document.querySelector("[data-action='ask-exit']").addEventListener("click", () => elements.exitDialog.showModal());
     document.querySelector("[data-action='cancel-exit']").addEventListener("click", () => elements.exitDialog.close("cancel"));
